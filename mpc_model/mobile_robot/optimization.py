@@ -61,7 +61,7 @@ def obstacle_avoidance_cost(x, y, x_obst, y_obst, w):
     return J_2
 
 
-def create_acados_solver(x0=ca.vertcat(0.0, 0.0, 0.0, 0.0),
+def create_ocp_solver(x0=np.array([0, 0, 0, 0]),
                          a=0,
                          w=0,
                          weights=np.array([1.0, 1.0, 1.0])):
@@ -73,6 +73,7 @@ def create_acados_solver(x0=ca.vertcat(0.0, 0.0, 0.0, 0.0),
     - x0: Initial Conditions (x,y,v,theta).
     - a: Control vector (acceleration)
     - w: Control vector (angular velocity)
+    - weights: Cost weight of obstacles
 
     Returns:
     - ocp: AcadosOcp object representing the optimal control problem.
@@ -93,12 +94,12 @@ def create_acados_solver(x0=ca.vertcat(0.0, 0.0, 0.0, 0.0),
     ocp.dims.nu = model.u.size()[0]
 
     # Set Cost
-    J_1 = 0
-    J_2 = 0
+    J_1 = ca.MX.sym("J1")
+    J_2 = ca.MX.sym("J2")
 
     # Define the total cost function
-    ocp.cost.cost_type = 'EXTERNAL'
-    ocp.cost.cost_ext_cost = ca.vertcat(J_1, J_2)
+    #ocp.cost.cost_type = 'EXTERNAL'
+    #ocp.cost.cost_expr_ext_cost = ca.vertcat(J_1, J_2)
 
     # Define constraints on states and control inputs
     ocp.constraints.lbu = np.array([-0.1, -0.3])  # Lower bounds on control inputs
@@ -107,10 +108,7 @@ def create_acados_solver(x0=ca.vertcat(0.0, 0.0, 0.0, 0.0),
     ocp.constraints.idxbu = np.array([0, 1]) # need to fix
 
     # Set initial condition for the robot
-    ocp.constraints.x0 = np.array([0, 0, 0, 0])
-
-    # Define the dynamics function using the continuous dynamics model
-    #ocp.dyn_expr = model.continous_dynamics(x0, ca.vertcat(a, w))
+    ocp.constraints.x0 = x0
 
     # Set up Acados solver
     acados_solver = AcadosOcpSolver(ocp, json_file='acados_ocp.json')
@@ -120,9 +118,8 @@ def create_acados_solver(x0=ca.vertcat(0.0, 0.0, 0.0, 0.0),
     ocp.solver_options.hessian_approx = "GAUSS_NEWTON"  # 'GAUSS_NEWTON', 'EXACT'
     ocp.solver_options.integrator_type = "IRK"
     ocp.solver_options.nlp_solver_type = "SQP"  # SQP_RTI, SQP
-    ocp.solver_options.nlp_solver_max_iter = 400
 
-    return ocp, acados_solver
+    return ocp,acados_solver
 
 
 ## Need to separate solver
