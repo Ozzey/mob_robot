@@ -22,38 +22,35 @@ def mobile_robot_model():
     v = ca.MX.sym('v')
     theta = ca.MX.sym('theta')
 
-
+    # Control
     a = ca.MX.sym('a')  # acceleration
     w = ca.MX.sym('w')  # angular velocity
 
-    # Define dynamics (xdot)
-    x_dot = ca.MX.sym("x_dot")
-    y_dot = ca.MX.sym("y_dot")
-    v_dot = ca.MX.sym("v_dot")
-    theta_dot = ca.MX.sym("theta_dot")
-
     # Define state and control vectors
-    x = ca.vertcat(x, y, v, theta)
-    xdot = ca.vertcat(x_dot, y_dot, v_dot, theta_dot)
-    u = ca.vertcat(a, w)
+    states = ca.vertcat(x, y, v, theta)
+    controls = ca.vertcat(a, w)
+    rhs = [v*ca.cos(theta), v*ca.sin(theta), a, w]
+    x_dot = ca.MX.sym('x_dot', len(rhs))
 
-    # Initialize Dynamics
-    x_dot = v * ca.cos(theta)
-    y_dot = v * ca.sin(theta)
-    v_dot = a
-    theta_dot = w
+    # Create a CasADi function for the continuous-time dynamics
+    continuous_dynamics = ca.Function(
+        'continuous_dynamics',
+        [states, controls],
+        [ca.vcat(rhs)],
+        ["state", "control_input"],
+        ["rhs"]
+    )
 
-    # Define the continuous-time dynamics
-    f_expl = ca.vertcat(x_dot, y_dot, v_dot, theta_dot)
-    f_impl = xdot - f_expl
+    f_impl = x_dot - continuous_dynamics(states, controls)
 
     model = AcadosModel()
 
-    model.f_expl_expr = f_expl
+    model.f_expl_expr = continuous_dynamics(states, controls)
     model.f_impl_expr = f_impl
-    model.x = x
-    model.xdot = xdot
-    model.u = u
+    model.x = states
+    model.xdot = x_dot
+    model.u = controls
+    model.p = []
     model.name = model_name
 
     return model
