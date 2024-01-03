@@ -20,7 +20,7 @@ def simulation(model):
 
     ocp, solver, integrator = create_ocp_solver()
 
-    #closed loop
+    # closed loop
     solver.set(N, 'yref', xs)
     for i in range(N):
         solver.set(i, 'yref', xs_between)
@@ -28,7 +28,7 @@ def simulation(model):
     for i in range(N):
         # solve ocp
         start = timeit.default_timer()
-        ##  set inertial (stage 0)
+        # set inertial (stage 0)
         solver.set(0, 'lbx', x_current)
         solver.set(0, 'ubx', x_current)
         status = solver.solve()
@@ -47,7 +47,6 @@ def simulation(model):
             raise Exception('acados integrator returned status {}. Exiting.'.format(status))
 
         # update
-        print(integrator.get("x"))
         x_current = integrator.get('x')
         simX[i + 1, :] = x_current
 
