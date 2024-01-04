@@ -1,10 +1,10 @@
 import numpy as np
 import timeit
-from mobile_robot.optimization import create_ocp_solver
-from draw import Draw_MPC_point_stabilization_v1
+from mpc_model.mobile_robot.create_solver import create_ocp_solver
+from mpc_model.visualization.draw import Draw_MPC_point_stabilization_v1
 
 
-def simulation(model):
+def simulationV1(model):
     N = 100
     nx = model.x.size()[0]
     nu = model.u.size()[0]
@@ -55,5 +55,4 @@ def simulation(model):
     print("Resulting Cost : ", solver.get_cost())
     print("-----------------------------------------------------")
     Draw_MPC_point_stabilization_v1(rob_diam=0.3, init_state=x0, target_state=xs, robot_states=simX, )
-
 

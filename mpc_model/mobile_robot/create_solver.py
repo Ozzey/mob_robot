@@ -1,8 +1,28 @@
 import casadi as ca
 import numpy as np
 import scipy.linalg
-from .model import mobile_robot_model
+from .robot_model import mobile_robot_model
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver
+
+
+def trajectory_cost():
+    cost = 0
+    return cost
+
+
+def obstacle_cost(X, w=1.0):
+    # Add the custom obstacle avoidance cost
+    b = 0.4
+    x_obst1, y_obst1 = 3.5, 3.5
+    x_obst2, y_obst2 = 1.1, 0.6
+
+    # Define the cost function using CasADi functions
+    dist_obst1 = (X[0] - x_obst1) ** 2 + (X[1] - y_obst1) ** 2
+    dist_obst2 = (X[0] - x_obst2) ** 2 + (X[1] - y_obst2) ** 2
+
+    J2 = ca.pi / 2 + ca.arctan(w - (dist_obst1 / b) ** 2) + ca.pi / 2 + ca.arctan(w - (dist_obst2 / b) ** 2)
+
+    return J2
 
 
 def create_ocp_solver():
@@ -23,10 +43,10 @@ def create_ocp_solver():
     model = mobile_robot_model()
     ocp.model = model
 
+    # --------------------PARAMETERS--------------
     # constants
     nx = model.x.size()[0]
     nu = model.u.size()[0]
-    ny = nx + nu
     T = 30
     N = 100
     n_params = len(model.p)
@@ -39,7 +59,6 @@ def create_ocp_solver():
 
     # initial state
     x_ref = np.zeros(nx)
-    u_ref = np.zeros(nu)
 
     # Set initial condition for the robot
     ocp.constraints.x0 = x_ref
@@ -48,37 +67,49 @@ def create_ocp_solver():
     ocp.dims.np = n_params
     ocp.parameter_values = np.zeros(n_params)
 
+    # ---------------------CONSTRAINTS------------------
     # Define constraints on states and control inputs
     ocp.constraints.lbu = np.array([-0.1, -0.3])  # Lower bounds on control inputs
     ocp.constraints.ubu = np.array([0.1, 0.3])    # Upper bounds on control inputs
     ocp.constraints.lu = np.array([100, 100, 1, 10])  # Upper bounds on states
     ocp.constraints.idxbu = np.array([0, 1])  # for indices 0 & 1
 
-    # Set Cost
-    ocp.cost.yref = np.concatenate((x_ref, u_ref))
-    ocp.cost.yref_e = x_ref
+    # ---------------------COSTS--------------------------
 
-    # Q & R are diagonal cost matrices
-    diagonal_Q = np.array([1, 1, 1, 1])
-    diagonal_R = np.array([0.5, 0.5])
-    Q = np.diag(diagonal_Q)  # dim same as nx
-    R = np.diag(diagonal_R)  # dim same as nu
+    # Define J1 and J2
+    # Define cost_y_expr, cost_y_expr_e
+    # Define W and W_e
+    # Define yref and yref_e
 
-    ocp.cost.cost_type = 'LINEAR_LS'
-    ocp.cost.cost_type_e = 'LINEAR_LS'
-    ocp.cost.W = scipy.linalg.block_diag(Q, R)
-    ocp.cost.W_e = Q
-    ocp.cost.Vx = np.zeros((ny, nx))
-    ocp.cost.Vx[:nx, :nx] = np.eye(nx)
-    ocp.cost.Vu = np.zeros((ny, nu))
-    ocp.cost.Vu[-nu:, -nu:] = np.eye(nu)
-    ocp.cost.Vx_e = np.eye(nx)
+    ocp.cost.cost_type = 'NONLINEAR_LS'
+    ocp.cost.cost_type_e = 'NONLINEAR_LS'
 
-    # solver options
-    # ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
-    # ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
-    # ocp.solver_options.integrator_type = 'ERK'
-    # ocp.solver_options.nlp_solver_type = 'SQP_RTI'
+    X = ocp.model.x
+    U = ocp.model.u
+
+    # Cost weights
+    w1 = 1.0  # adjust as needed
+    w2 = 1.0  # adjust as needed
+    w3 = 1.0  # adjust as needed
+    w = 1.0
+
+    J2 = obstacle_cost(X, w)
+
+    # Parameters:
+    ocp.model.cost_y_expr = J2
+    ocp.model.cost_y_expr_e = J2
+
+    ocp.cost.W = np.eye(1)
+    ocp.cost.W_e = np.eye(1)
+
+    ocp.cost.yref = np.array([0])
+    ocp.cost.yref_e = np.array([0])
+
+    # ---------------------SOLVER-------------------------
+    ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
+    ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
+    ocp.solver_options.integrator_type = 'ERK'
+    ocp.solver_options.nlp_solver_type = 'SQP_RTI'
 
     # Set up Acados solver
     acados_solver = AcadosOcpSolver(ocp, json_file='acados_ocp.json')
@@ -88,5 +119,5 @@ def create_ocp_solver():
 
 
 # Need to find cost
-# Need to fix trajectory when no obstacles
 # Need to set desired Linear Velocity = 0.3
+# Need to Visualize

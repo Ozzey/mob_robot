@@ -54,3 +54,4 @@ class Draw_MPC_point_stabilization_v1(object):
                                         self.rob_radius * np.sin(orientation), width=0.2, color='r')
         self.ax.add_patch(self.robot_arr)
         return self.robot_arr, self.robot_body
+
