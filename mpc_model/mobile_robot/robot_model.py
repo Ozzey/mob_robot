@@ -1,17 +1,11 @@
 import casadi as ca
 from acados_template import AcadosModel
+import numpy as np
 
 
 def mobile_robot_model():
     """
     Define a simple mobile robot model.
-
-    Returns:
-        x_vec (MX): Symbolic vector representing the state [x, y, v, theta].
-        u (MX): Symbolic vector representing the control input [a, w].
-        continuous_dynamics (Function): CasADi function for the continuous-time dynamics.
-            Takes state vector and control input vectors as input and returns
-            the vector representing the rates of change of the state variables.
     """
 
     model_name = 'mobile_robot'
@@ -38,7 +32,7 @@ def mobile_robot_model():
         [states, controls],
         [ca.vcat(rhs)],
         ["state", "control_input"],
-        ["rhs"]
+        ["rhs"],
     )
 
     f_impl = x_dot - continuous_dynamics(states, controls)
