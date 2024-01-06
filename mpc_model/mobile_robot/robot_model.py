@@ -1,7 +1,6 @@
 import casadi as ca
 from acados_template import AcadosModel
 
-
 def mobile_robot_model():
     """
     Define a simple mobile robot model.

@@ -29,7 +29,6 @@ start = timeit.default_timer()
 solver.set(0, "x", x0)
 solver.set(0, "p", p)
 
-
 # Solve optimal control problem
 status = solver.solve()
 if status != 0:
