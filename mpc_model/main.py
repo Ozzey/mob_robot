@@ -19,15 +19,9 @@ nu = ocp.model.u.size()[0]
 N = ocp.dims.N
 
 # ----------------INITIALIZE-------------------
-# Set initial state and parameter values
-x0 = np.array([0, 0, 0, 0])  # initial position and orientation
-p = np.array([])  # target and obstacle positions
-
-solver.set(0, "x", x0)
-solver.set(0, "p", p)
 
 # Get desired trajectory
-P, R = desired_trajectory(N)
+P = desired_trajectory(N)
 
 # Initialize Optimal Trajectory
 x_opt = np.zeros((ocp.dims.N + 1, nx))
@@ -35,8 +29,7 @@ u_opt = np.zeros((ocp.dims.N, nu))
 
 # Set yref for each stage in the prediction horizon
 for i in range(N):
-    # Concatenate state and control references
-    yref = np.concatenate((P[i], R[i]))
+    yref = P[i]
     solver.set(i, "yref", yref)
 
 # Set yref for the terminal stage
@@ -71,7 +64,7 @@ print("---------------------------")
 # ---------------------PLOT---------------------------
 # Plot reference path, obstacle, and optimal trajectory
 plt.figure()
-plt.plot([0, x_target], [0, y_target], "k--", label="Reference path")
+plt.plot(P[:, 0], P[:, 1], 'o-', label='Reference Path')
 plt.plot(x_obst1, y_obst1, "ro", label="Obstacle 1")
 plt.plot(x_obst2, y_obst2, "ro", label="Obstacle 2")
 plt.plot(x_opt[:, 0], x_opt[:, 1], "b-", label="Optimal trajectory")
@@ -87,6 +80,7 @@ plt.figure()
 
 plt.subplot(2, 2, 1)
 plt.plot(time_values, x_opt[:, 2], "g-", label="Velocity")
+plt.plot(time_values, P[:, 2], "m-", label="Desired Velocity")
 plt.xlabel("Time")
 plt.ylabel("Velocity")
 plt.legend()
@@ -94,6 +88,7 @@ plt.grid()
 
 plt.subplot(2, 2, 2)
 plt.plot(time_values, x_opt[:, 3], "m-", label="Angle")
+plt.plot(time_values, P[:, 3], "g-", label="Desired Angle")
 plt.xlabel("Time")
 plt.ylabel("Theta")
 plt.legend()
