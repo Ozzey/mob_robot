@@ -4,30 +4,28 @@ from .robot_model import mobile_robot_model
 from acados_template import AcadosOcp, AcadosOcpSolver
 
 
-def desired_trajectory():
+def desired_trajectory(N):
     # Define parameters
     initial_position = (0, 0)
     final_position = (5, 5)
     initial_theta = 0
-    final_theta = 0
-    N = 30  # Prediction horizon
-    v_max = 0.3  # Desired linear velocity (m/s)
+    v_max = 0.3
 
     # Linear interpolation for positions
-    x = np.linspace(initial_position[0], final_position[0], N)
-    y = np.linspace(initial_position[1], final_position[1], N)
+    x = np.linspace(initial_position[0], final_position[0], N+1)
+    y = np.linspace(initial_position[1], final_position[1], N+1)
 
     # Velocity and orientation
     # Assuming constant velocity (v_max) and orientation (theta)
-    v = np.full(N, v_max)
-    theta = np.full(N, initial_theta)
+    v = np.full(N+1, v_max)
+    theta = np.full(N+1, initial_theta)
 
     # Combine into p
     p = np.vstack((x, y, v, theta)).T
 
     # Desired control inputs are zero
-    a = np.zeros(N)
-    w = np.zeros(N)
+    a = np.zeros(N+1)
+    w = np.zeros(N+1)
 
     # Combine into r
     r = np.vstack((a, w)).T
@@ -51,9 +49,8 @@ def create_ocp_solver():
     # constants
     nx = model.x.size()[0]
     nu = model.u.size()[0]
-    N = 30  # Prediction horizon
+    N = 30  # Prediction horizon (works for N =200)
     T = 30  # Total time for trajectory (assuming a constant velocity of 0.3 m/s)
-    dt = T / N  # Time step
 
     # Setting initial conditions
     ocp.dims.N = N
@@ -62,15 +59,15 @@ def create_ocp_solver():
     ocp.solver_options.tf = T
 
     # Set initial condition for the robot
-    ocp.constraints.x0 = np.zeros(4)
+    ocp.constraints.x0 = np.array([0, 0, 0, 0])
 
     # ---------------------CONSTRAINTS------------------
     # Define constraints on states and control inputs
     ocp.constraints.lbu = np.array([-0.1, -0.3])  # Lower bounds on control inputs
     ocp.constraints.ubu = np.array([0.1, 0.3])  # Upper bounds on control inputs
     ocp.constraints.ux = np.array([100, 100, 1, 10])  # Upper bounds on states
-    ocp.constraints.lx = np.array([-100, -100, -1, -10])  # Upper bounds on states
-    ocp.constraints.idxbu = np.array([0, 1])  # for indices 0 & 1
+    ocp.constraints.lx = np.array([-100, -100, 0, -10])  # Lower bounds on states
+    ocp.constraints.idxbu = np.array([0, 1])  # for indices 0 & 1 of u
 
     # ---------------------COSTS--------------------------
     # Set up the cost function
@@ -80,26 +77,14 @@ def create_ocp_solver():
     X = ocp.model.x
     U = ocp.model.u
 
-    # Reference State & Control
-    x_ref, u_ref = desired_trajectory()
+    ocp.model.cost_y_expr = ca.vertcat(X, U)
+    ocp.model.cost_y_expr_e = X
 
-    # Difference between Initial and Real State & Control
-    e_x = X - x_ref[N-1, :]
-    e_u = U - u_ref[N-1, :]
+    ocp.cost.yref = np.zeros(nu + nx)
+    ocp.cost.yref_e = np.zeros(nx)
 
-    # Difference in Terminal Case
-    e_x_N = X - x_ref[N-1, :]
-
-    ocp.model.cost_y_expr = e_x.T @ e_x + e_u.T @ e_u
-    ocp.model.cost_y_expr_e = e_x_N.T @ e_x_N
-
-    diagonal = np.full((1,), 10)
-
-    ocp.cost.W = np.eye(1)  # State weights
-    ocp.cost.W_e = np.diag(diagonal)  # Terminal state weights
-
-    ocp.cost.yref = np.zeros(1)
-    ocp.cost.yref_e = np.zeros(1)
+    ocp.cost.W = 10 * np.eye(nu + nx)  # State weights
+    ocp.cost.W_e = 100 * np.eye(nx)  # Terminal state weights
 
     # ---------------------SOLVER-------------------------
     ocp.solver_options.qp_solver = 'FULL_CONDENSING_HPIPM'
@@ -111,7 +96,4 @@ def create_ocp_solver():
     acados_solver = AcadosOcpSolver(ocp, json_file='acados_ocp.json')
     return ocp, acados_solver
 
-
-# Need to debug
-# Need to check optimal path
-
+# Configure y coordinates

@@ -1,57 +1,74 @@
-from mobile_robot.create_solver import create_ocp_solver
+from mobile_robot.create_solver import create_ocp_solver, desired_trajectory
 import numpy as np
 import matplotlib.pyplot as plt
 import timeit
 import matplotlib
 matplotlib.use("TkAgg")
 
+# --------------PARAMETERS-----------
 # Define target and obstacle positions
-x_target = 5
-y_target = 5
-x_obst1 = 6
-y_obst1 = 6
-x_obst2 = 6
-y_obst2 = 6
-
-nx = 4
-nu = 2
+x_target, y_target = 5, 5
+x_obst1, y_obst1 = 3.5, 3.5
+x_obst2, y_obst2 = 1.1, 0.6
 
 # Create optimal control problem solver
 ocp, solver = create_ocp_solver()
 
+nx = ocp.model.x.size()[0]
+nu = ocp.model.u.size()[0]
 N = ocp.dims.N
 
+# ----------------INITIALIZE-------------------
 # Set initial state and parameter values
 x0 = np.array([0, 0, 0, 0])  # initial position and orientation
 p = np.array([])  # target and obstacle positions
 
-start = timeit.default_timer()
 solver.set(0, "x", x0)
 solver.set(0, "p", p)
+
+# Get desired trajectory
+P, R = desired_trajectory(N)
+
+# Initialize Optimal Trajectory
+x_opt = np.zeros((ocp.dims.N + 1, nx))
+u_opt = np.zeros((ocp.dims.N, nu))
+
+# Set yref for each stage in the prediction horizon
+for i in range(N):
+    # Concatenate state and control references
+    yref = np.concatenate((P[i], R[i]))
+    solver.set(i, "yref", yref)
+
+# Set yref for the terminal stage
+ocp.cost.yref_e = P[N]
+
+start = timeit.default_timer()
+
+# ---------------------SOLVE-----------------
 
 # Solve optimal control problem
 status = solver.solve()
 if status != 0:
     raise Exception("Solver failed!")
 time_record = timeit.default_timer() - start
-# Get optimal state and control trajectories
-x_opt = np.zeros((ocp.dims.N + 1, nx))
-u_opt = np.zeros((ocp.dims.N, nu))
 
 solver.print_statistics()
 
-for i in range(ocp.dims.N + 1):
+for i in range(ocp.dims.N+1):
     x_opt[i, :] = solver.get(i, "x")
-    print("State: ", solver.get(i, "x"))
+    print(i, "State:", x_opt[i])
     if i < ocp.dims.N:
-        print("Control: ", solver.get(i, "u"))
         u_opt[i, :] = solver.get(i, "u")
+
+# ----------------OUTPUTS------------------
 
 print("---------------------------")
 print("Cost : ", solver.get_cost())
 print("Time: ", format(time_record))
 print("---------------------------")
 
+
+# ---------------------PLOT---------------------------
 # Plot reference path, obstacle, and optimal trajectory
 plt.figure()
 plt.plot([0, x_target], [0, y_target], "k--", label="Reference path")
@@ -64,7 +81,7 @@ plt.legend()
 plt.grid()
 
 # New code for additional graphs
-time_values = np.arange(0, N+1)  # Assuming N is the length of the time vector
+time_values = np.arange(0, N+1)
 
 plt.figure()
 
