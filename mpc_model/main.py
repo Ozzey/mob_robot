@@ -39,11 +39,13 @@ time_record = timeit.default_timer() - start
 x_opt = np.zeros((ocp.dims.N + 1, nx))
 u_opt = np.zeros((ocp.dims.N, nu))
 
+solver.print_statistics()
 
 for i in range(ocp.dims.N + 1):
     x_opt[i, :] = solver.get(i, "x")
-    print(solver.get(i, "x"))
+    print("State: ", solver.get(i, "x"))
     if i < ocp.dims.N:
+        print("Control: ", solver.get(i, "u"))
         u_opt[i, :] = solver.get(i, "u")
 
 print("---------------------------")

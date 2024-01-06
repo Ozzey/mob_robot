@@ -1,6 +1,5 @@
 import casadi as ca
 from acados_template import AcadosModel
-import numpy as np
 
 
 def mobile_robot_model():
@@ -40,7 +39,6 @@ def mobile_robot_model():
     model = AcadosModel()
 
     model.f_expl_expr = continuous_dynamics(states, controls)
-    model.f_impl_expr = f_impl
     model.x = states
     model.xdot = x_dot
     model.u = controls
