@@ -19,6 +19,7 @@ nu = ocp.model.u.size()[0]
 N = ocp.dims.N
 
 # ----------------INITIALIZE-------------------
+# Set initial state and parameter values
 
 # Get desired trajectory
 P = desired_trajectory(N)
@@ -49,7 +50,8 @@ solver.print_statistics()
 
 for i in range(ocp.dims.N+1):
     x_opt[i, :] = solver.get(i, "x")
-    print(i, "State:", x_opt[i])
+    x = solver.get(i, "x")
+    print(x[0], ", ", x[1], ",", x[2], ",", x[3])
     if i < ocp.dims.N:
         u_opt[i, :] = solver.get(i, "u")
 
@@ -64,6 +66,7 @@ print("---------------------------")
 # ---------------------PLOT---------------------------
 # Plot reference path, obstacle, and optimal trajectory
 plt.figure()
+# plt.plot([0, x_target], [0, y_target], "k--", label="Reference path")
 plt.plot(P[:, 0], P[:, 1], 'o-', label='Reference Path')
 plt.plot(x_obst1, y_obst1, "ro", label="Obstacle 1")
 plt.plot(x_obst2, y_obst2, "ro", label="Obstacle 2")
