@@ -21,15 +21,23 @@ def desired_trajectory(N):
     for i in range(len(x)-1):
         theta[i] = np.arctan2(y[i], x[i])
         v[i] = np.sqrt(x[i] ** 2 + y[i] ** 2)
-        if v[i] >= 0.3:
-            v[i] = 0.3
+
+    # v = np.full(N+1, 0.3)
+    # theta = np.full(N+1, 0)
 
     v[N] = 0
     theta[N] = 0
+
     # Combine into p
     p = np.vstack((x, y, v, theta)).T
 
-    return p
+    a = np.zeros(len(x))  # Acceleration
+    w = np.zeros(len(x))  # Angular velocity
+
+    # Combine control variables into matrix r
+    r = np.vstack((a, w)).T
+
+    return p, r
 
 
 def create_ocp_solver():
@@ -72,34 +80,35 @@ def create_ocp_solver():
     ocp.cost.cost_type_e = "NONLINEAR_LS"
 
     X = ocp.model.x
+    U = ocp.model.u
 
-    ocp.model.cost_y_expr = X
+    ocp.model.cost_y_expr = ca.vertcat(X, U)
     ocp.model.cost_y_expr_e = X
 
-    ocp.cost.yref = np.zeros(nx)
+    ocp.cost.yref = np.zeros(nx + nu)
     ocp.cost.yref_e = np.zeros(nx)
 
-    W_x = np.array([5, 5, 0.5, 10])
+    W_x = np.array([5, 5, 5, 1, 0.1, 0.1])
     W = np.diag(W_x)
-    W_xe = np.array([400, 400, 0.01, 0.01])
+    W_xe = np.array([50, 50, 10, 10])
     W_e = np.diag(W_xe)
 
     ocp.cost.W = W  # State weights
     ocp.cost.W_e = W_e  # Terminal state weights
 
     # ---------------------SOLVER-------------------------
-    ocp.solver_options.tf = 25
+    ocp.solver_options.tf = 50
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
-    ocp.solver_options.qp_solver_cond_N = 10
-    ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
-    ocp.solver_options.integrator_type = 'ERK'
+    ocp.solver_options.qp_solver_cond_N = 1
     ocp.solver_options.nlp_solver_type = 'SQP'
-    ocp.solver_options.levenberg_marquardt = 3.0
-    ocp.solver_options.nlp_solver_max_iter = 15
+    ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
+    ocp.solver_options.integrator_type = 'IRK'
+    ocp.solver_options.levenberg_marquardt = 1e-4
+    ocp.solver_options.nlp_solver_max_iter = 30
     ocp.solver_options.qp_solver_iter_max = 100
     ocp.solver_options.nlp_solver_tol_stat = 1e2
     ocp.solver_options.nlp_solver_tol_eq = 1e-1
-    ocp.solver_options.print_level = 0
+
     # Set up Acados solver
     acados_solver = AcadosOcpSolver(ocp, json_file='acados_ocp.json')
     return ocp, acados_solver

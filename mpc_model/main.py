@@ -22,7 +22,7 @@ N = ocp.dims.N
 # Set initial state and parameter values
 
 # Get desired trajectory
-P = desired_trajectory(N)
+P, R = desired_trajectory(N)
 
 # Initialize Optimal Trajectory
 x_opt = np.zeros((ocp.dims.N + 1, nx))
@@ -30,7 +30,7 @@ u_opt = np.zeros((ocp.dims.N, nu))
 
 # Set yref for each stage in the prediction horizon
 for i in range(N):
-    yref = P[i]
+    yref = np.concatenate((P[i], R[i]))
     solver.set(i, "yref", yref)
 
 # Set yref for the terminal stage
@@ -62,7 +62,6 @@ print("Cost : ", solver.get_cost())
 print("Time: ", format(time_record))
 print("---------------------------")
 
-
 # ---------------------PLOT---------------------------
 # Plot reference path, obstacle, and optimal trajectory
 plt.figure()
@@ -70,7 +69,7 @@ plt.figure()
 plt.plot(P[:, 0], P[:, 1], 'o-', label='Reference Path')
 plt.plot(x_obst1, y_obst1, "ro", label="Obstacle 1")
 plt.plot(x_obst2, y_obst2, "ro", label="Obstacle 2")
-plt.plot(x_opt[:, 0], x_opt[:, 1], "b-", label="Optimal trajectory")
+plt.plot(x_opt[:, 0], x_opt[:, 1], "r-", label="Optimal trajectory")
 plt.xlabel("x")
 plt.ylabel("y")
 plt.legend()
